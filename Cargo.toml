@@ -1,0 +1,14 @@
+[package]
+name = "conf_robber"
+version = "0.1.0"
+authors = ["Jack <khevse@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+gcc = "0.3"
+libc = "0.2.1"
+byteorder="0.4.2"
+encoding = "0.2.32"
+log = "0.3.4"
+fern = "0.3.5"
+time = "0.1.34"

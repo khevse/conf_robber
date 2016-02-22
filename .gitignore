@@ -1,0 +1,8 @@
+
+*.sublime-project
+*.sublime-workspace
+*.a
+
+target
+Cargo.lock
+zlib
