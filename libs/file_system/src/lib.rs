@@ -1,13 +1,18 @@
 
+#[macro_use]
+extern crate log;
+
 use std::error::Error;
 use std::fs::{self, File, create_dir_all, metadata};
 use std::io::{Read, BufWriter, Write};
 use std::path::Path;
+use std::env::{current_dir, split_paths};
+use std::collections::HashMap;
 
 // Прочитать данные файла в буфер
 pub fn read_file(path: &str, buffer: &mut Vec<u8>) -> Result<(), String> {
 
-    // Open the path in read-only mode, returns `io::Result<File>`
+    // Open the path in read-only mode
     let mut file = match File::open(&path) {
         Err(why) => {
             return Err(format!("Couldn't open: {}", Error::description(&why)));
@@ -24,18 +29,13 @@ pub fn read_file(path: &str, buffer: &mut Vec<u8>) -> Result<(), String> {
 // Записать данные файл. Если файл существует, то данные будут дописаны
 pub fn write_file(path: &str, data: &Vec<u8>) -> Result<(), String> {
 
-    let file = match File::open(path) {
-        Ok(v) => v,
-        Err(_) => {
-            match File::create(path) {
-                Err(e) => {
-                    return Err(format!("Failed create the file '{}' - {}.",
-                                       path,
-                                       Error::description(&e)))
-                }
-                Ok(v) => v,
-            }
+    let file = match File::create(path) {
+        Err(e) => {
+            return Err(format!("Failed create the file '{}' - {}.",
+                               path,
+                               Error::description(&e)))
         }
+        Ok(v) => v,
     };
 
     let mut writer = BufWriter::new(&file);
@@ -51,9 +51,9 @@ pub fn write_file(path: &str, data: &Vec<u8>) -> Result<(), String> {
 }
 
 // Возвращает коллекцию с путями к файлам, которые находятся внутри каталога
-pub fn files_in_dir(path_to_dir: &String) -> Vec<String> {
+pub fn files_in_dir(path_to_dir: &String) -> HashMap<String, String> {
 
-    let mut retval: Vec<String> = Vec::new();
+    let mut retval: HashMap<String, String> = HashMap::new();
 
     if is_dir(path_to_dir) {
         let dir = match fs::read_dir(path_to_dir) {
@@ -66,6 +66,24 @@ pub fn files_in_dir(path_to_dir: &String) -> Vec<String> {
 
         for entry in dir {
             let entry = entry.ok().expect("Failed get entry.");
+            let path = entry.path();
+
+            let file_name: String = match path.file_name() {
+                Some(v) => {
+                    match v.to_str() {
+                        Some(v) => String::from(v),
+                        None => {
+                            error!("Failed convertation name of the file to the string.");
+                            panic!("Failed convertation name of the file to the string.");
+                        }
+                    }
+                }
+                None => {
+                    error!("File name is empty.");
+                    panic!("File name is empty.");
+                }
+            };
+
             let path = match entry.path().to_str() {
                 None => {
                     error!("Error convert path to the string.");
@@ -74,7 +92,7 @@ pub fn files_in_dir(path_to_dir: &String) -> Vec<String> {
                 Some(v) => v.to_string(),
             };
 
-            retval.push(path);
+            retval.insert(file_name, path);
         }
     }
 
@@ -141,39 +159,43 @@ pub fn create_dir(path: &str) {
     }
 }
 
+// Возвращает путь к каталогу в котором находится исполняемый файл
+pub fn get_current_dir() -> Result<String, String> {
+
+    match current_dir() {
+        Ok(exe_path) => {
+            for path in split_paths(&exe_path) {
+                return Ok(path_to_str(path.as_path()));
+            }
+        }
+        Err(e) => {
+            return Err(format!("Failed to get current directory: {}", e));
+        }
+    };
+
+    return Err(String::from("Failed to get current directory"));
+}
+
 #[cfg(test)]
 mod tests {
-    use utils::fs::{read_file, path_to_str};
+    use {read_file, path_to_str, get_current_dir};
     use std::path::Path;
-    use std::env::{current_dir, split_paths};
-
-    pub fn get_current_dir() -> Result<String, String> {
-
-        match current_dir() {
-            Ok(exe_path) => {
-                for path in split_paths(&exe_path) {
-                    return Ok(path_to_str(path.as_path()));
-                }
-            }
-            Err(e) => {
-                return Err(format!("Failed to get current directory: {}", e));
-            }
-        };
-
-        return Err(String::from("Failed to get current directory"));
-    }
 
     #[test]
     fn test_read_file() {
         let path_to_current_dir = get_current_dir().ok().expect("Failed read current directory.");
-        let path_to_test_data_dir = Path::new(&path_to_current_dir).join("test_data");
-        let path_to_original_cf = path_to_test_data_dir.join("original.cf");
-        let path_to_original_cf_str = path_to_str(path_to_original_cf.as_path());
+        let path_to_original_cf = Path::new(&path_to_current_dir)
+                                    .parent().unwrap() // libs
+                                    .parent().unwrap() // conf_robber
+                                    .join("test_data")
+                                    .join("original.cf");
+        let path_to_original_cf = path_to_str(path_to_original_cf.as_path());
 
         let mut buffer: Vec<u8> = vec![];
-        read_file(&path_to_original_cf_str.to_string(), &mut buffer)
-            .ok()
-            .expect("Failed read file.");
+        match read_file(&path_to_original_cf.to_string(), &mut buffer) {
+            Ok(_) => (),
+            Err(e) => panic!("{}", e),
+        };
         assert_eq!(36851, buffer.len());
     }
 }

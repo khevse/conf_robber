@@ -1,4 +1,8 @@
 
+#[macro_use]
+extern crate log;
+extern crate libc;
+
 use std::ptr;
 use std::slice;
 
@@ -87,7 +91,7 @@ fn test_zlib_decompress() {
 }
 
 #[test]
-fn test_zlib_wrapper() {
+fn test_zlib_compress_decompress() {
 
     let data: Vec<u8> = vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]; // hello
     let compress_data = compress(&data);

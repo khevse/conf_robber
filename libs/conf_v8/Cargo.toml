@@ -1,0 +1,11 @@
+[package]
+name = "conf_v8"
+version = "0.1.0"
+authors = ["Jack <khevse@gmail.com>"]
+
+[dependencies]
+log = "0.3.4"
+time = "0.1.34"
+file_system = { path = "../file_system" }
+conv = { path = "../conv" }
+zlib_wrapper = { path = "../zlib_wrapper" }

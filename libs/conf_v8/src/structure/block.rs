@@ -1,11 +1,12 @@
 
-use cf::conf::{GROUP_BLOKS_FLAG, get_region};
-use cf::header::Header;
-use cf::nested_block::NestedBlock;
-use cf::attributes::{Attributes, GROUP_TYPE_MODULE, GROUP_TYPE_FORM, GROUP_TYPE_SIMPLY};
-use cf::toc::TOC;
-use utils::zlibwrapper::{compress, decompress};
-use utils::fs::{create_dir, path_to_str, write_file, read_file, is_dir, file_name, files_in_dir};
+use zlib_wrapper;
+use file_system;
+
+use {GROUP_BLOKS_FLAG, get_region};
+use structure::header::Header;
+use structure::nested_block::NestedBlock;
+use structure::attributes::{Attributes, GROUP_TYPE_MODULE, GROUP_TYPE_FORM, GROUP_TYPE_SIMPLY};
+use structure::toc::TOC;
 use std::path::Path;
 use time;
 
@@ -58,14 +59,15 @@ impl Block {
         let mut group_type: i32 = GROUP_TYPE_SIMPLY;
         let mut nested_blocks: Vec<NestedBlock> = Vec::new();
         let current_time = time::now().tm_nsec as u64;
+        let block_name = file_system::file_name(path);
 
-        if is_dir(path) {
+        if file_system::is_dir(path) {
 
             block_type = BlockType::Multiple;
 
-            for file in &files_in_dir(path)[..] {
+            for (nested_block_name, nested_block_path) in &file_system::files_in_dir(path) {
                 let mut nested_block_data: Vec<u8> = Vec::new();
-                match read_file(file, &mut nested_block_data) {
+                match file_system::read_file(nested_block_path, &mut nested_block_data) {
                     Ok(_) => (),
                     Err(e) => {
                         error!("{}", e);
@@ -73,13 +75,12 @@ impl Block {
                     }
                 };
 
-                let nested_block_name = file_name(file);
                 let nested_block_attrs = Attributes::new(current_time,
                                                          GROUP_TYPE_SIMPLY,
                                                          &nested_block_name);
                 nested_blocks.push(NestedBlock::new(&nested_block_attrs, &nested_block_data));
 
-                match &*nested_block_name {
+                match &*(*nested_block_name) {
                     "module" => group_type = GROUP_TYPE_MODULE,
                     "form" => group_type = GROUP_TYPE_FORM,
                     _ => continue,
@@ -88,7 +89,7 @@ impl Block {
 
         } else {
             let mut nested_block_data: Vec<u8> = Vec::new();
-            match read_file(path, &mut nested_block_data) {
+            match file_system::read_file(path, &mut nested_block_data) {
                 Ok(_) => (),
                 Err(e) => {
                     error!("{}", e);
@@ -96,15 +97,13 @@ impl Block {
                 }
             };
 
-            let nested_block_attrs = Attributes::new(current_time,
-                                                     GROUP_TYPE_SIMPLY,
-                                                     &file_name(path));
+            let nested_block_attrs = Attributes::new(current_time, GROUP_TYPE_SIMPLY, &block_name);
             nested_blocks.push(NestedBlock::new(&nested_block_attrs, &nested_block_data));
         }
 
         let retval = Block {
             block_type: block_type, // тип блока
-            attrs: Attributes::new(current_time, group_type, &file_name(path)), /* атрибуты блока */
+            attrs: Attributes::new(current_time, group_type, &block_name), /* атрибуты блока */
             source_data: Vec::new(), /* Исходные необработанные данные блока */
             nested_blocks: nested_blocks, /* подчиненные блоки (если это составной блок) */
         };
@@ -140,9 +139,7 @@ impl Block {
 
         match self.block_type {
             BlockType::FromCf => {
-                // TODO
-                error!("TODO");
-                panic!("TODO");
+                data.extend_from_slice(&self.source_data);
             }
             BlockType::Simply => {
                 for sb in &self.nested_blocks {
@@ -177,8 +174,8 @@ impl Block {
             }
         }
 
-        if !data.is_empty() {
-            data = compress(&data);
+        if !data.is_empty() && BlockType::FromCf.ne(&self.block_type) {
+            data = zlib_wrapper::compress(&data);
         }
 
         return (self.attrs.for_cf(), data);
@@ -201,19 +198,19 @@ impl Block {
             BlockType::Simply => path_to_block_dir.push_str(&*path_to_dir),
             BlockType::Multiple => {
                 let group_dir = Path::new(path_to_dir).join(block_name);
-                path_to_block_dir = path_to_str(group_dir.as_path());
+                path_to_block_dir = file_system::path_to_str(group_dir.as_path());
             }
         }
 
-        create_dir(&path_to_block_dir);
+        file_system::create_dir(&path_to_block_dir);
 
         for sb in nested_blocks {
             let name = sb.attrs.name();
             trace!("Nested block: {}", name);
             let file_name = Path::new(&path_to_block_dir).join(name);
-            let file_name_str = path_to_str(file_name.as_path());
+            let file_name_str = file_system::path_to_str(file_name.as_path());
 
-            match write_file(&*file_name_str, &sb.data) {
+            match file_system::write_file(&*file_name_str, &sb.data) {
                 Ok(_) => (),
                 Err(e) => {
                     error!("Error writing block to the file: {}", e);
@@ -227,7 +224,7 @@ impl Block {
 
     // Получить наименование блока
     pub fn name(&self) -> String {
-        return self.attrs.name().clone();
+        return self.attrs.name();
     }
 
     // Распаковывает данные блоков если они были получены из конфигурационного файла и не распакованы ранее.
@@ -239,7 +236,7 @@ impl Block {
 
         let mut block_data: Vec<u8> = Vec::new();
         if !self.source_data.is_empty() {
-            let mut decompress_data = decompress(&self.source_data);
+            let mut decompress_data = zlib_wrapper::decompress(&self.source_data);
             block_data.append(&mut decompress_data);
         }
 
@@ -388,8 +385,7 @@ fn test_simple_block_from_cf() {
 
 #[test]
 fn test_multi_block_from_cf() {
-
-    use utils;
+    use zlib_wrapper;
 
     let mut attrs: Vec<u8> = Vec::new();
     attrs.extend_from_slice(&[0xB0, 0x14, 0xC1, 0x30, 0x23, 0x42, 0x02, 0x00]);
@@ -421,7 +417,7 @@ fn test_multi_block_from_cf() {
 
     data_multi_block.extend_from_slice(&block_data);
     data_multi_block.extend_from_slice(&block_data);
-    data_multi_block = utils::zlibwrapper::compress(&data_multi_block);
+    data_multi_block = zlib_wrapper::compress(&data_multi_block);
 
     let data_multi_block_header = Header::for_cf(data_multi_block.len());
 

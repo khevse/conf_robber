@@ -1,0 +1,10 @@
+[package]
+name = "zlib_wrapper"
+version = "0.1.0"
+authors = ["Jack <khevse@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+log = "0.3.4"
+gcc = "0.3"
+libc = "0.2.1"

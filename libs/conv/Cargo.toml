@@ -1,0 +1,9 @@
+[package]
+name = "conv"
+version = "0.1.0"
+authors = ["Jack <khevse@gmail.com>"]
+
+[dependencies]
+log = "0.3.4"
+byteorder="0.4.2"
+encoding = "0.2.32"

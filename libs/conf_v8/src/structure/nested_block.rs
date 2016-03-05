@@ -1,5 +1,5 @@
 
-use cf::attributes::Attributes;
+use structure::attributes::Attributes;
 
 // Вложенный блок
 #[derive(Clone)]

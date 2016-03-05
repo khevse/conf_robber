@@ -1,7 +1,7 @@
 
-use cf::conf::{CF, GROUP_BLOKS_FLAG, get_block};
-use cf::header::{Header, is_header, check_control_characters};
-use cf::block_address::BlockAddress;
+use {CF, GROUP_BLOKS_FLAG, get_block};
+use structure::header::{Header, is_header, check_control_characters};
+use structure::block_address::BlockAddress;
 
 // Оглавление конфигурационного файла или группы блоков
 pub struct TOC {

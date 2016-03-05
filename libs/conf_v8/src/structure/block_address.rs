@@ -1,6 +1,6 @@
 
-use utils::conv;
-use cf::header::Header;
+use conv;
+use structure::header::Header;
 use std::i32::MAX;
 
 // Адреса областей атрибутов и данных одного блока для оглавления конфигурационного файла

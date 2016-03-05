@@ -1,0 +1,11 @@
+[package]
+name = "logger"
+version = "0.1.0"
+authors = ["Jack <khevse@gmail.com>"]
+
+[dependencies]
+log = "0.3.4"
+fern = "0.3.5"
+time = "0.1.34"
+regex = "0.1.55"
+file_system = { path = "../file_system" }

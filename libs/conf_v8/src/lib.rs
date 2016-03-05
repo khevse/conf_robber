@@ -1,8 +1,16 @@
 
-use utils;
-use cf::header::Header;
-use cf::block::Block;
-use cf::toc::TOC;
+#[macro_use]
+extern crate log;
+extern crate time;
+extern crate conv;
+extern crate file_system;
+extern crate zlib_wrapper;
+
+mod structure;
+
+use structure::header::Header;
+use structure::block::Block;
+use structure::toc::TOC;
 
 pub static GROUP_BLOKS_FLAG: [u8; 4] = [0xFF, 0xFF, 0xFF, 0x7F]; // маркер группы &conv::int32_to_bytes(i32::max_value())
 pub static DEFAULT_BLOCK_SIZE: i32 = 512; // Размер блока данных по умолчанию
@@ -74,8 +82,7 @@ impl CF {
         info!("Read files");
 
         let mut cf = CF { blocks: Vec::new() };
-        let list = utils::fs::files_in_dir(path_to_dir);
-        for path in &list[..] {
+        for (_, path) in &file_system::files_in_dir(path_to_dir) {
             cf.add_block(Block::from_file(&path));
         }
 
@@ -137,10 +144,10 @@ impl CF {
     pub fn prefix() -> Vec<u8> {
 
         let mut data: Vec<u8> = Vec::new();
-        data.extend_from_slice(&GROUP_BLOKS_FLAG);                                // маркер группы
-        data.extend_from_slice(&utils::conv::int32_to_bytes(DEFAULT_BLOCK_SIZE)); // размер блока по умолчанию
-        data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);                        // unknown
-        data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);                        // unknown
+        data.extend_from_slice(&GROUP_BLOKS_FLAG);                         // маркер группы
+        data.extend_from_slice(&conv::int32_to_bytes(DEFAULT_BLOCK_SIZE)); // размер блока по умолчанию
+        data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);                 // unknown
+        data.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);                 // unknown
 
         return data;
     }

@@ -1,4 +1,8 @@
 
+#[macro_use]
+extern crate log;
+extern crate byteorder;
+extern crate encoding;
 
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
 use encoding::{Encoding, EncoderTrap, DecoderTrap};
@@ -106,7 +110,8 @@ pub fn bytes_to_int32(bytes: &[u8]) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use utils::conv::*;
+    use {utf16_to_utf8, utf8_to_utf16, hex_to_int, int32_to_hex_bytes, int64_to_bytes,
+         bytes_to_int64, bytes_to_int32};
 
     #[test]
     fn test_utf16_utf8() {
