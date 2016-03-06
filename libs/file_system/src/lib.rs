@@ -10,7 +10,7 @@ use std::env::{current_dir, split_paths};
 use std::collections::HashMap;
 
 // Прочитать данные файла в буфер
-pub fn read_file(path: &str, buffer: &mut Vec<u8>) -> Result<(), String> {
+pub fn read_file(path: &str) -> Result<Vec<u8>, String> {
 
     // Open the path in read-only mode
     let mut file = match File::open(&path) {
@@ -20,9 +20,11 @@ pub fn read_file(path: &str, buffer: &mut Vec<u8>) -> Result<(), String> {
         Ok(file) => file,
     };
 
-    match file.read_to_end(buffer) {
+    let mut buffer: Vec<u8> = Vec::new();
+
+    match file.read_to_end(&mut buffer) {
         Err(why) => Err(format!("Couldn't read: {}", Error::description(&why))),
-        Ok(_) => Ok(()),
+        Ok(_) => Ok(buffer),
     }
 }
 
@@ -189,11 +191,11 @@ mod tests {
                                     .parent().unwrap() // conf_robber
                                     .join("test_data")
                                     .join("original.cf");
+
         let path_to_original_cf = path_to_str(path_to_original_cf.as_path());
 
-        let mut buffer: Vec<u8> = vec![];
-        match read_file(&path_to_original_cf.to_string(), &mut buffer) {
-            Ok(_) => (),
+        let buffer = match read_file(&path_to_original_cf) {
+            Ok(v) => v,
             Err(e) => panic!("{}", e),
         };
         assert_eq!(36851, buffer.len());

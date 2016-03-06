@@ -115,13 +115,10 @@ mod tests {
         let path_to_main_log = files_in_log_dir.get(&String::from("main.log"));
         assert!(path_to_main_log.is_some());
 
-        let mut log_text: Vec<u8> = Vec::new();
-        match file_system::read_file(path_to_main_log.unwrap(), &mut log_text) {
+        let log_text = match file_system::read_file(path_to_main_log.unwrap()) {
             Err(e) => panic!("{}", e),
-            Ok(_) => (),
-        }
-
-        let log_text = String::from_utf8(log_text).unwrap();
+            Ok(v) => String::from_utf8(v).unwrap(),
+        };
 
         assert!(has_text(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}),(\d{3}) - ERROR - text", &log_text));
         assert!(has_text(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}),(\d{3}) - TRACE - text", &log_text));

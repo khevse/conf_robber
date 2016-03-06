@@ -37,13 +37,12 @@ fn unpack_to_dir(path_to_cf: &String, path_to_target_dir: &String, log_level: Op
     let unpack_dir = file_system::path_to_str(&Path::new(&path_to_target_dir).join("unpack"));
     file_system::create_dir(&*unpack_dir);
 
-    let mut data: Vec<u8> = Vec::new();
-    match file_system::read_file(&*path_to_cf, &mut data) {
+    match file_system::read_file(&*path_to_cf) {
         Err(v) => {
             error!("{}", v);
             panic!("{}", v)
         }
-        Ok(_) => {
+        Ok(data) => {
             let mut cf = conf_v8::CF::from_cf(&data);
             cf.deflate(&unpack_dir);
         }

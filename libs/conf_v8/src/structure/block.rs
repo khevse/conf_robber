@@ -66,9 +66,8 @@ impl Block {
             block_type = BlockType::Multiple;
 
             for (nested_block_name, nested_block_path) in &file_system::files_in_dir(path) {
-                let mut nested_block_data: Vec<u8> = Vec::new();
-                match file_system::read_file(nested_block_path, &mut nested_block_data) {
-                    Ok(_) => (),
+                let nested_block_data = match file_system::read_file(nested_block_path) {
+                    Ok(v) => v,
                     Err(e) => {
                         error!("{}", e);
                         panic!("Error initialize multiple block from the file {}", e);
@@ -88,9 +87,8 @@ impl Block {
             }
 
         } else {
-            let mut nested_block_data: Vec<u8> = Vec::new();
-            match file_system::read_file(path, &mut nested_block_data) {
-                Ok(_) => (),
+            let nested_block_data = match file_system::read_file(path) {
+                Ok(v) => v,
                 Err(e) => {
                     error!("{}", e);
                     panic!("Error initialize simple block from the file {}", e);
