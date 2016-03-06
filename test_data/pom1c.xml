@@ -2,16 +2,16 @@
 <project>
 
     <!-- Путь к каталогу с установленной платформой 1С, с помощью которой будет выполнятся сборка -->
-    <pathTo1C>C:\Program Files (x86)\1cv8\8.3.5.1517\bin\1cv8.exe</pathTo1C>
+    <platform>C:\Program Files (x86)\1cv8\8.3.5.1517\bin\1cv8.exe</platform>
 
     <!-- Информационная база 1С на основании которой будет выполняться сборка 
          Атрибут "createNewCf" с значением "true" указывает что, из ИБ нужно
          выгрузить cf файл, и оставить в нем объекты метаданных указанные 
          в узле "objects". Иначе при сборке будет использоваться ранее созданный.-->
-    <sourceIB createNewCf="true">
-        <path>E:\MyWork\C++\ConfRobber\tests\Data\ib</path>
-        <userName></userName>
-        <userPwd></userPwd>
+    <sourceIB createNewCf="true"
+              path="E:\MyWork\C++\ConfRobber\tests\Data\ib"
+              userName=""
+              userPwd="">
 
         <!-- Список объектов, которые необходимо оставить в cf файле
         Допустимые имена дочерних узлов, узла "objects" совпадают с именами
