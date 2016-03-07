@@ -18,20 +18,64 @@
 
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate fern;
 extern crate time;
 extern crate file_system;
 
+use std::ptr;
+use std::mem;
 use std::path::Path;
 use std::fs::File;
 
-// Инициализировать объект логирования
+/// Settings of the logger
+struct LogSettings {
+    directory: String,
+}
+
+impl LogSettings {
+    /// Create new object of the settings
+    fn new(directory: &String) -> LogSettings {
+        return LogSettings { directory: directory.clone() };
+    }
+
+    /// Return the directory with data of logging
+    fn directory(&self) -> String {
+        return self.directory.clone();
+    }
+}
+
+static mut LOG_SETTINGS: *const LogSettings = 0 as *const LogSettings;
+
+/// Set settings of logging
+unsafe fn set_log_settings(directory: &String) {
+    LOG_SETTINGS = mem::transmute(Box::new(LogSettings::new(directory)));
+}
+
+// Return settings of logging
+unsafe fn get_log_settings<'a>() -> &'a mut LogSettings {
+    if LOG_SETTINGS == ptr::null::<LogSettings>() {
+        set_log_settings(&String::new());
+    }
+    return mem::transmute(LOG_SETTINGS);
+}
+
+/// Return the directory with data of logging
+pub fn get_log_directory() -> String {
+    return unsafe { get_log_settings().directory() };
+}
+
+/// Initialize the logger
 pub fn init_log(target_dir: &String, log_level: Option<&String>) {
 
     let log_dir = file_system::path_to_str(&Path::new(&target_dir).join("log"));
     file_system::create_dir(&*log_dir);
 
     let log_file = Path::new(&log_dir).join("main.log");
+
+    unsafe {
+        set_log_settings(&log_dir);
+    }
 
     // Cleaninig file if he exist
     match File::create(&*log_file) {
@@ -86,7 +130,7 @@ mod tests {
     extern crate file_system;
     extern crate regex;
 
-    use init_log;
+    use super::{init_log, get_log_directory};
     use std::path::Path;
 
     #[test]
@@ -100,7 +144,15 @@ mod tests {
                              .join("debug");
         let target_dir = file_system::path_to_str(target_dir.as_path());
 
+        assert_eq!("", get_log_directory());
+
         init_log(&target_dir, Some(&String::from("trace")));
+
+        let log_dir = Path::new(&target_dir).join("log");
+        let log_dir = file_system::path_to_str(log_dir.as_path());
+
+        assert_eq!(log_dir, get_log_directory());
+
         error!("text");
         trace!("text");
         debug!("text");
