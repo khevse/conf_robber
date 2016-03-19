@@ -8,6 +8,7 @@ use byteorder::{ByteOrder, BigEndian, LittleEndian};
 use encoding::{Encoding, EncoderTrap, DecoderTrap};
 use encoding::all::UTF_16LE;
 
+#[inline(always)]
 pub fn utf16_to_utf8(value: &[u8]) -> Vec<u8> {
 
     let mut buf = String::new();
@@ -22,6 +23,7 @@ pub fn utf16_to_utf8(value: &[u8]) -> Vec<u8> {
     return buf.into_bytes();
 }
 
+#[inline(always)]
 pub fn utf8_to_utf16(value: &[u8]) -> Vec<u8> {
 
     let text = match String::from_utf8(value.to_vec()) {
@@ -44,18 +46,21 @@ pub fn utf8_to_utf16(value: &[u8]) -> Vec<u8> {
     return buf;
 }
 
+#[inline(always)]
 pub fn int64_to_bytes(value: u64) -> [u8; 8] {
     let mut buf = [0u8; 8];
     LittleEndian::write_u64(&mut buf, value);
     return buf;
 }
 
+#[inline(always)]
 pub fn int32_to_bytes(value: i32) -> [u8; 4] {
     let mut buf = [0u8; 4];
     LittleEndian::write_i32(&mut buf, value);
     return buf;
 }
 
+#[inline(always)]
 pub fn int32_to_hex_bytes(value: i32) -> [u8; 8] {
 
     let mut temp_buf = [0u8; 4];
@@ -76,6 +81,7 @@ pub fn int32_to_hex_bytes(value: i32) -> [u8; 8] {
     return buf;
 }
 
+#[inline(always)]
 pub fn hex_to_int(bytes: &[u8]) -> i32 {
 
     let mut result: i32 = 0;
@@ -99,10 +105,12 @@ pub fn hex_to_int(bytes: &[u8]) -> i32 {
     return result;
 }
 
+#[inline(always)]
 pub fn bytes_to_int64(bytes: &[u8]) -> u64 {
     return LittleEndian::read_u64(&bytes);
 }
 
+#[inline(always)]
 pub fn bytes_to_int32(bytes: &[u8]) -> i32 {
     return LittleEndian::read_i32(&bytes);
 }

@@ -186,19 +186,18 @@ impl Block {
 
         let nested_blocks = self.get_data();
 
-        let block_name: String = self.name();
-        let mut path_to_block_dir: String = String::new();
-        match self.block_type {
+        let path_to_block_dir: String = match self.block_type {
             BlockType::FromCf => {
                 error!("Error recording unprocessed block.");
                 panic!("Error recording unprocessed block.");
             }
-            BlockType::Simply => path_to_block_dir.push_str(&*path_to_dir),
+            BlockType::Simply => path_to_dir.clone(),
             BlockType::Multiple => {
-                let group_dir = Path::new(path_to_dir).join(block_name);
-                path_to_block_dir = file_system::path_to_str(group_dir.as_path());
+                let group_dir = Path::new(path_to_dir).join(self.name());
+                let path = file_system::path_to_str(group_dir.as_path());
+                path
             }
-        }
+        };
 
         file_system::create_dir(&path_to_block_dir);
 
@@ -221,7 +220,7 @@ impl Block {
     }
 
     // Получить наименование блока
-    pub fn name(&self) -> String {
+    pub fn name<'a>(&'a self) -> &'a String {
         return self.attrs.name();
     }
 

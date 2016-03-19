@@ -72,8 +72,8 @@ impl Attributes {
     }
 
     // Возвращает наименование блока
-    pub fn name(&self) -> String {
-        return self.name.clone();
+    pub fn name<'a>(&'a self) -> &'a String {
+        return &self.name;
     }
 }
 
