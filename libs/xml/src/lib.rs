@@ -91,7 +91,10 @@ impl XmlDOM {
                 Ok(xml::reader::XmlEvent::Characters(data)) => {
 
                     let parent: *mut XmlElement = match stack.last() {
-                        None => ptr::null_mut(),
+                        None => {
+                            error!("Not found parent element for text.");
+                            panic!("Not found parent element for text.");
+                        }
                         Some(v) => *v,
                     };
 
@@ -104,7 +107,7 @@ impl XmlDOM {
                     stack.pop();
                 }
                 Err(e) => {
-                    println!("Error: {}", e);
+                    println!("Failed xml: {}", e);
                     break;
                 }
                 _ => {}
@@ -136,29 +139,32 @@ mod tests {
         let root = xml.root();
         assert_eq!("project", root.name);
         assert_eq!("", root.text);
-        assert_eq!(2, root.childrens.len());
+        assert_eq!(1, root.childrens.len());
 
-        assert_eq!(1, root.find("platform").len());
         assert_eq!(1, root.find("sourceIB").len());
 
-        let platform = root.first("platform").unwrap();
         let source_ib = root.first("sourceIB").unwrap();
 
-        assert_eq!(r"C:\Program Files (x86)\1cv8\8.3.5.1517\bin\1cv8.exe",
-                   platform.text);
         assert_eq!("", source_ib.text);
 
-        assert_eq!(4, source_ib.attributes.len());
-        assert_eq!(true, source_ib.attributes.contains_key("createNewCf"));
+        assert_eq!(7, source_ib.attributes.len());
+        assert_eq!(true, source_ib.attributes.contains_key("platform"));
         assert_eq!(true, source_ib.attributes.contains_key("path"));
-        assert_eq!(true, source_ib.attributes.contains_key("userName"));
-        assert_eq!(true, source_ib.attributes.contains_key("userPwd"));
+        assert_eq!(true, source_ib.attributes.contains_key("user_name"));
+        assert_eq!(true, source_ib.attributes.contains_key("user_pwd"));
+        assert_eq!(true, source_ib.attributes.contains_key("storage_path"));
+        assert_eq!(true, source_ib.attributes.contains_key("storage_user_name"));
+        assert_eq!(true, source_ib.attributes.contains_key("storage_user_pwd"));
 
-        assert_eq!("true", source_ib.attributes.get("createNewCf").unwrap());
+        assert_eq!(r"C:\Program Files (x86)\1cv8\8.3.6.2390\bin\1cv8.exe",
+                   source_ib.attributes.get("platform").unwrap());
         assert_eq!(r"E:\MyWork\C++\ConfRobber\tests\Data\ib",
                    source_ib.attributes.get("path").unwrap());
-        assert_eq!("", source_ib.attributes.get("userName").unwrap());
-        assert_eq!("", source_ib.attributes.get("userPwd").unwrap());
+        assert_eq!("", source_ib.attributes.get("user_name").unwrap());
+        assert_eq!("", source_ib.attributes.get("user_pwd").unwrap());
+        assert_eq!("", source_ib.attributes.get("storage_path").unwrap());
+        assert_eq!("", source_ib.attributes.get("storage_user_name").unwrap());
+        assert_eq!("", source_ib.attributes.get("storage_user_pwd").unwrap());
 
         assert_eq!(1, source_ib.find("objects").len());
     }
