@@ -113,6 +113,23 @@ pub fn is_dir(path: &String) -> bool {
     };
 }
 
+// Файл существует
+pub fn exist(path: &String) -> bool {
+    return Path::new(path).exists();
+}
+
+pub fn remove(path: &String) -> Result<(), String> {
+
+    return match fs::remove_file(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            Err(format!("Failed remove the file '{}' - {}.",
+                        path,
+                        Error::description(&e)))
+        }
+    };
+}
+
 // Возвращает имя файла
 pub fn file_name(path: &String) -> String {
 
@@ -180,7 +197,7 @@ pub fn get_current_dir() -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use {read_file, path_to_str, get_current_dir};
+    use {read_file, path_to_str, get_current_dir, exist};
     use std::path::Path;
 
     #[test]
@@ -193,6 +210,8 @@ mod tests {
                                     .join("original.cf");
 
         let path_to_original_cf = path_to_str(path_to_original_cf.as_path());
+
+        assert_eq!(true, exist(&path_to_original_cf));
 
         let buffer = match read_file(&path_to_original_cf) {
             Ok(v) => v,
