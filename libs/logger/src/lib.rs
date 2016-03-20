@@ -52,7 +52,7 @@ unsafe fn set_log_settings(directory: &String) {
     LOG_SETTINGS = mem::transmute(Box::new(LogSettings::new(directory)));
 }
 
-// Return settings of logging
+/// Return settings of logging
 unsafe fn get_log_settings<'a>() -> &'a mut LogSettings {
     if LOG_SETTINGS == ptr::null::<LogSettings>() {
         set_log_settings(&String::new());

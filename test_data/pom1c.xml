@@ -5,7 +5,7 @@
          Из информационной базы будет выгружен конфигурационный файл (*.cf),
          из которого будут удалены все объекты метаданных, кроме тех что указаны
          в узле "objects". -->
-    <sourceIB path="E:\MyWork\C++\ConfRobber\tests\Data\ib"
+    <sourceIB path="target\debug\ib"
               platform="C:\Program Files (x86)\1cv8\8.3.6.2390\bin\1cv8.exe" 
               user_name=""
               user_pwd=""
