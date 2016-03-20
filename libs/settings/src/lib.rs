@@ -4,7 +4,7 @@ extern crate xml;
 extern crate regex;
 
 #[cfg(test)]
-extern crate encoding;
+extern crate conv;
 #[cfg(test)]
 extern crate file_system;
 
@@ -99,31 +99,30 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use encoding::{Encoding, EncoderTrap};
-    use encoding::all::UTF_8;
+    extern crate conv;
 
     #[test]
     fn test_metadata_selections() {
 
         let settings = create();
 
-        assert!(settings.metadata_selections(&str_to_string(r""))
+        assert!(settings.metadata_selections(&conv::unicode_to_str(r""))
                         .is_none());
-        assert!(settings.metadata_selections(&str_to_string(r"Документы"))
+        assert!(settings.metadata_selections(&conv::unicode_to_str(r"Документы"))
                         .is_none());
-        assert!(settings.metadata_selections(&str_to_string(r"Справочники"))
+        assert!(settings.metadata_selections(&conv::unicode_to_str(r"Справочники"))
                         .is_some());
-        assert!(settings.metadata_selections(&str_to_string(r"Языки"))
+        assert!(settings.metadata_selections(&conv::unicode_to_str(r"Языки"))
                         .is_some());
-        assert!(settings.metadata_selections(&str_to_string(r"Обработки"))
+        assert!(settings.metadata_selections(&conv::unicode_to_str(r"Обработки"))
                         .is_some());
 
-        let test_data = settings.metadata_selections(&str_to_string(r"Обработки"))
+        let test_data = settings.metadata_selections(&conv::unicode_to_str(r"Обработки"))
                                 .unwrap();
         assert_eq!(1, test_data.len());
 
         let test_data = test_data.get(0).unwrap();
-        assert_eq!(&*str_to_string(r"Обработки"),
+        assert_eq!(&*conv::unicode_to_str(r"Обработки"),
                    test_data.type_name());
         assert_eq!(r"test", test_data.name());
         assert_eq!(true, test_data.main());
@@ -143,12 +142,6 @@ mod tests {
             }
         }
 
-    }
-
-    // For string with unicode symbols
-    fn str_to_string(s: &str) -> String {
-        let res = UTF_8.encode(s, EncoderTrap::Strict).unwrap();
-        return String::from_utf8(res).unwrap();
     }
 
     fn create() -> Settings {

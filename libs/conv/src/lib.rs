@@ -6,7 +6,27 @@ extern crate encoding;
 
 use byteorder::{ByteOrder, BigEndian, LittleEndian};
 use encoding::{Encoding, EncoderTrap, DecoderTrap};
-use encoding::all::UTF_16LE;
+use encoding::all::{UTF_16LE, UTF_8};
+
+#[inline(always)]
+pub fn unicode_to_str(text: &str) -> String {
+
+    let res = match UTF_8.encode(text, EncoderTrap::Strict) {
+        Err(e) => {
+            error!("Encode unicode to utf8: {}", e);
+            panic!("Encode unicode to utf8: {}", e);
+        }
+        Ok(v) => v,
+    };
+
+    return match String::from_utf8(res) {
+        Err(e) => {
+            error!("Failed converted bytes to utf8 string: {}", e);
+            panic!("Failed converted bytes to utf8 string: {}", e);
+        }
+        Ok(v) => v,
+    };
+}
 
 #[inline(always)]
 pub fn utf16_to_utf8(value: &[u8]) -> Vec<u8> {
@@ -119,7 +139,7 @@ pub fn bytes_to_int32(bytes: &[u8]) -> i32 {
 #[cfg(test)]
 mod tests {
     use {utf16_to_utf8, utf8_to_utf16, hex_to_int, int32_to_hex_bytes, int64_to_bytes,
-         bytes_to_int64, bytes_to_int32};
+         bytes_to_int64, bytes_to_int32, unicode_to_str};
 
     #[test]
     fn test_utf16_utf8() {
@@ -165,5 +185,14 @@ mod tests {
     fn test_bytes_to_int32() {
         let data: Vec<u8> = vec![0xE4, 0x02, 0x00, 0x00];
         assert_eq!(740, bytes_to_int32(&data[0..4]));
+    }
+
+    #[test]
+    fn test_unicode_to_str() {
+
+        assert_eq!("\u{43f}\u{440}\u{438}\u{432}\u{435}\u{442}",
+                   unicode_to_str("привет"));
+        assert_eq!("привет", unicode_to_str("привет"));
+        assert_eq!(r"привет", unicode_to_str("привет"));
     }
 }
