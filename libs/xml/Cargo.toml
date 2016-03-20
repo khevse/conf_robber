@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Jack <khevse@gmail.com>"]
 
 [dependencies]
-log = "0.3.4"
-xml-rs = "0.3.0"
+log = "0.3"
+xml-rs = "0.3"
 file_system = { path = "../file_system" }

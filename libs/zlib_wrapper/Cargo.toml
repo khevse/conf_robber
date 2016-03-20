@@ -5,6 +5,6 @@ authors = ["Jack <khevse@gmail.com>"]
 build = "build.rs"
 
 [dependencies]
-log = "0.3.4"
+log = "0.3"
 gcc = "0.3"
-libc = "0.2.1"
+libc = "0.2"

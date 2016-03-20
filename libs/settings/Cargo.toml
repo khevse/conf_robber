@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Jack <khevse@gmail.com>"]
 
 [dependencies]
-log = "0.3.4"
+log = "0.3"
 regex = "0.1"
 encoding = "0.2"
 xml = { path = "../xml" }
