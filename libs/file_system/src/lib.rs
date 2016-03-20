@@ -120,13 +120,28 @@ pub fn exist(path: &String) -> bool {
 
 pub fn remove(path: &String) -> Result<(), String> {
 
-    return match fs::remove_file(path) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            Err(format!("Failed remove the file '{}' - {}.",
-                        path,
-                        Error::description(&e)))
+    return match is_dir(path) {
+        true => {
+            match fs::remove_dir_all(path) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    Err(format!("Failed remove the file '{}' - {}.",
+                                path,
+                                Error::description(&e)))
+                }
+            }
         }
+        false => {
+            match fs::remove_file(path) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    Err(format!("Failed remove the file '{}' - {}.",
+                                path,
+                                Error::description(&e)))
+                }
+            }
+        }
+
     };
 }
 
