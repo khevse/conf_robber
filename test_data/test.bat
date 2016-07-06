@@ -12,13 +12,21 @@ SET "PATH_TO_EXE=%TARGET_DIR%\conf_robber.exe"
 SET "PATH_TO_TARGET_PARSE=%TARGET_DIR%\target_P"
 SET "PATH_TO_TARGET_BUILD=%TARGET_DIR%\target_B"
 
-if exist "%PATH_TO_TARGET_PARSE%" (
-    rmdir /s /q "%PATH_TO_TARGET_PARSE%"
+SET "PATH_TO_TARGET_PARSE_WITH_SETTINGS=%TARGET_DIR%\target_P_Settings"
+SET "PATH_TO_TARGET_BUILD_WITH_SETTINGS=%TARGET_DIR%\target_B_Settings"
+
+
+for %%f in ("%PATH_TO_TARGET_PARSE%", "%PATH_TO_TARGET_BUILD%", "%PATH_TO_TARGET_PARSE_WITH_SETTINGS%", "%PATH_TO_TARGET_BUILD_WITH_SETTINGS%") do (
+    if exist "%%f" (
+        rmdir /s /q "%%f"
+    )
 )
 
-if exist "%PATH_TO_TARGET_BUILD%" (
-    rmdir /s /q "%PATH_TO_TARGET_BUILD%"
-)
+SET "CF=original.cf"
 
-%PATH_TO_EXE% -P "--cf=%CURRENT_DIR%\test_data\original.cf" "--target=%PATH_TO_TARGET_PARSE%" --log-level=info
-%PATH_TO_EXE% -B "--dir=%PATH_TO_TARGET_PARSE%\unpack" "--target=%PATH_TO_TARGET_BUILD%" --log-level=info
+rem Full variant
+rem %PATH_TO_EXE% -P "--cf=%CURRENT_DIR%\test_data\%CF%" "--target=%PATH_TO_TARGET_PARSE%" --log-level=info
+rem %PATH_TO_EXE% -B "--dir=%PATH_TO_TARGET_PARSE%\unpack" "--target=%PATH_TO_TARGET_BUILD%" --log-level=info
+
+%PATH_TO_EXE% -P "--cf=%CURRENT_DIR%\test_data\%CF%" "--target=%PATH_TO_TARGET_PARSE_WITH_SETTINGS%" --log-level=info "--settings=%cd%/settings.xml"
+%PATH_TO_EXE% -B "--dir=%PATH_TO_TARGET_PARSE_WITH_SETTINGS%\unpack" "--target=%PATH_TO_TARGET_BUILD_WITH_SETTINGS%" --log-level=info

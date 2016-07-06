@@ -8,3 +8,4 @@ build = "build.rs"
 log = "0.3"
 gcc = "0.3"
 libc = "0.2"
+file_system = { path = "../file_system" }

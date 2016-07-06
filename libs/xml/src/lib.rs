@@ -103,7 +103,7 @@ impl XmlDOM {
                     }
 
                 }
-                Ok(xml::reader::XmlEvent::EndElement {..}) => {
+                Ok(xml::reader::XmlEvent::EndElement { .. }) => {
                     stack.pop();
                 }
                 Err(e) => {
@@ -156,9 +156,9 @@ mod tests {
         assert_eq!(true, source_ib.attributes.contains_key("storage_user_name"));
         assert_eq!(true, source_ib.attributes.contains_key("storage_user_pwd"));
 
-        assert_eq!(r"C:\Program Files (x86)\1cv8\8.3.6.2390\bin\1cv8.exe",
+        assert_eq!(r"C:\Program Files (x86)\1cv8\8.3.5.1517\bin\1cv8.exe",
                    source_ib.attributes.get("platform").unwrap());
-        assert_eq!(r"E:\MyWork\C++\ConfRobber\tests\Data\ib",
+        assert_eq!(r"target\debug\ib",
                    source_ib.attributes.get("path").unwrap());
         assert_eq!("", source_ib.attributes.get("user_name").unwrap());
         assert_eq!("", source_ib.attributes.get("user_pwd").unwrap());
@@ -174,13 +174,13 @@ mod tests {
         use std::path::Path;
 
         let path_to_current_dir = file_system::get_current_dir()
-                                      .ok()
-                                      .expect("Failed read current directory.");
+            .ok()
+            .expect("Failed read current directory.");
         let path_to_pom1c_xml = Path::new(&path_to_current_dir)
                                     .parent().unwrap() // libs
                                     .parent().unwrap() // conf_robber
                                     .join("test_data")
-                                    .join("pom1c.xml");
+                                    .join("settings.xml");
         let path_to_pom1c_xml = file_system::path_to_str(path_to_pom1c_xml.as_path());
 
         return match file_system::read_file(&path_to_pom1c_xml) {

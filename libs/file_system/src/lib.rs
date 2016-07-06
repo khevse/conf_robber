@@ -232,6 +232,6 @@ mod tests {
             Ok(v) => v,
             Err(e) => panic!("{}", e),
         };
-        assert_eq!(36851, buffer.len());
+        assert_eq!(36908, buffer.len());
     }
 }

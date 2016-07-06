@@ -1,5 +1,7 @@
 
-use {CF, GROUP_BLOKS_FLAG, get_block};
+use configuration::CF;
+use GROUP_BLOKS_FLAG;
+use structure::reader;
 use structure::header::{Header, is_header, check_control_characters};
 use structure::block_address::BlockAddress;
 
@@ -103,7 +105,7 @@ fn read_toc(data: &Vec<u8>, header_toc: &Header) -> Vec<BlockAddress> {
            header_toc.region_position());
 
     let mut toc: Vec<BlockAddress> = Vec::new();
-    let data_toc = get_block(data, header_toc);
+    let data_toc = reader::get_block(data, header_toc);
 
     let value_size = BlockAddress::size();
 

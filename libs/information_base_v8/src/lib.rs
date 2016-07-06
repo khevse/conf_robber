@@ -151,9 +151,9 @@ impl InformationBaseV8 {
         self.add_path_to_log(mode, &mut full_args);
 
         let output = Command::new(self.connections_settings.platform())
-                         .args(&full_args)
-                         .output()
-                         .unwrap_or_else(|e| panic!("failed to execute process: {}", e));
+            .args(&full_args)
+            .output()
+            .unwrap_or_else(|e| panic!("failed to execute process: {}", e));
 
         info!("command: {} {:?}",
               self.connections_settings.platform(),
@@ -266,17 +266,17 @@ mod tests {
         settings.insert(String::from("path"), get_path_to_new_ib());
 
         let ib = InformationBaseV8::new(&settings);
-        ib.create(&get_path_to_cf_template());
+        let _ = ib.create(&get_path_to_cf_template());
 
         let path_to_temp_cf = Path::new(&get_target_dir()).join("temp.cf");
         let path_to_temp_cf = file_system::path_to_str(path_to_temp_cf.as_path());
-        ib.dump_cfg(&path_to_temp_cf);
+        let _ = ib.dump_cfg(&path_to_temp_cf);
 
         assert!(file_system::exist(&path_to_temp_cf));
     }
 
     fn create_settings() -> settings::Settings {
-        let path_to_pom1c_xml = Path::new(&get_test_data_dir()).join("pom1c.xml");
+        let path_to_pom1c_xml = Path::new(&get_test_data_dir()).join("settings.xml");
         let path_to_pom1c_xml = file_system::path_to_str(path_to_pom1c_xml.as_path());
 
         let pom1c_xml = match file_system::read_file(&path_to_pom1c_xml) {
@@ -290,19 +290,19 @@ mod tests {
     fn get_target_dir() -> String {
 
         let path_to_current_dir = file_system::get_current_dir()
-                                      .ok()
-                                      .expect("Failed read current directory.");
+            .ok()
+            .expect("Failed read current directory.");
         let target_dir = Path::new(&path_to_current_dir)
-                             .join("target")
-                             .join("debug");
+            .join("target")
+            .join("debug");
         return file_system::path_to_str(target_dir.as_path());
     }
 
     fn get_test_data_dir() -> String {
 
         let path_to_current_dir = file_system::get_current_dir()
-                                      .ok()
-                                      .expect("Failed read current directory.");
+            .ok()
+            .expect("Failed read current directory.");
         let path = Path::new(&path_to_current_dir)
                                     .parent().unwrap() // libs
                                     .parent().unwrap() // conf_robber
@@ -328,7 +328,7 @@ mod tests {
         for (file_name, path) in file_system::files_in_dir(&log_dir) {
 
             if !file_name.eq("main.log") {
-                file_system::remove(&path);
+                let _ = file_system::remove(&path);
             }
         }
     }

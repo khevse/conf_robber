@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate log;
 extern crate libc;
+extern crate file_system;
 
 use std::ptr;
 use std::slice;
@@ -10,16 +11,19 @@ use std::slice;
 mod zlib {
     #[link(name = "zlibwrapper")]
     extern "C" {
+        #[no_mangle]
         pub fn compress_data(source_data: *const u8,
                              source_data_size: u32,
                              data: &*mut u8,
                              size: *mut u32)
                              -> bool;
+        #[no_mangle]
         pub fn decompress_data(source_data: *const u8,
                                source_data_size: u32,
                                data: &*mut u8,
                                size: *mut u32)
                                -> bool;
+        #[no_mangle]
         pub fn free_data(data: &*mut u8);
     }
 }
@@ -72,17 +76,16 @@ pub fn decompress(source_data: &Vec<u8>) -> Vec<u8> {
 fn test_zlib_compress() {
 
     let data: Vec<u8> = vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]; // hello
-    let res: Vec<u8> = vec![0xCB, 0x48, 0xCD, 0xC9, 0xC9, 0x07, 0x00];
+    let res: Vec<u8> = vec![0xCA, 0x48, 0xCD, 0xC9, 0xC9, 0x07];
     let test = compress(&data);
 
-    assert_eq!(res.len(), test.len());
     assert_eq!(res, test);
 }
 
 #[test]
 fn test_zlib_decompress() {
 
-    let data: Vec<u8> = vec![0xCB, 0x48, 0xCD, 0xC9, 0xC9, 0x07, 0x00];
+    let data: Vec<u8> = vec![0xCA, 0x48, 0xCD, 0xC9, 0xC9, 0x07];
     let res: Vec<u8> = vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]; // hello
     let test = decompress(&data);
 
@@ -98,4 +101,40 @@ fn test_zlib_compress_decompress() {
     let decompress_data = decompress(&compress_data);
 
     assert_eq!(data, decompress_data);
+}
+
+#[test]
+fn test_zlib_big_data() {
+    use std::path::Path;
+
+    let path_to_current_dir = file_system::get_current_dir()
+        .ok()
+        .expect("Failed read current directory.");
+    let path_to_cf = Path::new(&path_to_current_dir)
+                                .parent().unwrap() // libs
+                                .parent().unwrap() // conf_robber
+                                .join("test_data")
+                                .join("original.cf");
+    let path_to_cf = file_system::path_to_str(path_to_cf.as_path());
+
+    let mut data = match file_system::read_file(&path_to_cf) {
+        Ok(v) => v,
+        Err(e) => panic!("{}", e),
+    };
+
+    while !data.is_empty() {
+
+        let compress_data = compress(&data);
+        let decompress_data = decompress(&compress_data);
+
+        assert_eq!(decompress_data, data);
+
+        let new_size: usize = data.len() -
+                              match data.len() / 3 {
+            0 => 1,
+            _ => data.len() / 3,
+        };
+        println!("new_size: {}", new_size);
+        data.truncate(new_size);
+    }
 }

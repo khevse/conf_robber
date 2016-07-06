@@ -7,6 +7,7 @@
 - zlib: http://www.zlib.net/ - поместить в каталог libs/zlib_wrapper/cpp_src/zlib/
 
 Установить:
+- rustup default stable-x86_64-pc-windows-gnu (https://www.rustup.rs)
 - mingw64: http://sourceforge.net/projects/mingw-w64/
 - cmake:   http://www.cmake.org/download/
 

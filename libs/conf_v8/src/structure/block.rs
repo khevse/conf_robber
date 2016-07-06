@@ -2,7 +2,8 @@
 use zlib_wrapper;
 use file_system;
 
-use {GROUP_BLOKS_FLAG, get_region};
+use GROUP_BLOKS_FLAG;
+use structure::reader;
 use structure::header::Header;
 use structure::nested_block::NestedBlock;
 use structure::attributes::{Attributes, GROUP_TYPE_MODULE, GROUP_TYPE_FORM, GROUP_TYPE_SIMPLY};
@@ -10,7 +11,9 @@ use structure::toc::TOC;
 use std::path::Path;
 use time;
 
-#[derive(PartialEq, Clone)]
+use std::cell::RefCell;
+
+#[derive(Copy, Clone, PartialEq)]
 enum BlockType {
     FromCf, // необработанный блок данных
     Simply, // простой тип блока
@@ -22,13 +25,25 @@ enum BlockType {
 // 2. область данных
 #[derive(Clone)]
 pub struct Block {
-    block_type: BlockType, // тип блока
+    block_type: RefCell<BlockType>, // тип блока
     attrs: Attributes, // атрибуты блока
-    source_data: Vec<u8>, // Исходные необработанные данные блока
-    nested_blocks: Vec<NestedBlock>, // обработанные данные блока
+    source_data: RefCell<Vec<u8>>, // Исходные необработанные данные блока
+    nested_blocks: RefCell<Vec<NestedBlock>>, // обработанные данные блока
 }
 
 impl Block {
+    pub fn new(name: &str, data: &Vec<u8>) -> Block {
+
+        let attrs = Attributes::new(0, 0, &String::from(name));
+
+        Block {
+            block_type: RefCell::new(BlockType::Simply),
+            attrs: attrs.clone(),
+            source_data: RefCell::new(Vec::new()),
+            nested_blocks: RefCell::new(vec![NestedBlock::new(&attrs, data)]),
+        }
+    }
+
     // Создать новый блок на основании данных конфигурационного файла
     pub fn from_cf(source_data: &Vec<u8>, attrs_header: &Header, data_header: &Header) -> Block {
 
@@ -36,18 +51,17 @@ impl Block {
 
         let (attrs, data) = get_attrs_and_data(source_data, attrs_header, data_header);
 
-        trace!("Block name: {}", attrs.name());
+        trace!("Block name: {}", attrs.id());
 
         let retval = Block {
-            block_type: BlockType::FromCf,
+            block_type: RefCell::new(BlockType::FromCf),
             attrs: attrs,
-            source_data: data,
-            nested_blocks: Vec::new(),
+            source_data: RefCell::new(data),
+            nested_blocks: RefCell::new(Vec::new()),
         };
-
         trace!("-Init block from cf");
 
-        return retval;
+        retval
     }
 
     // Инициализировать блок из данных сохраненных в файлы
@@ -59,13 +73,13 @@ impl Block {
         let mut group_type: i32 = GROUP_TYPE_SIMPLY;
         let mut nested_blocks: Vec<NestedBlock> = Vec::new();
         let current_time = time::now().tm_nsec as u64;
-        let block_name = file_system::file_name(path);
+        let block_id = file_system::file_name(path);
 
         if file_system::is_dir(path) {
 
             block_type = BlockType::Multiple;
 
-            for (nested_block_name, nested_block_path) in &file_system::files_in_dir(path) {
+            for (nested_block_id, nested_block_path) in &file_system::files_in_dir(path) {
                 let nested_block_data = match file_system::read_file(nested_block_path) {
                     Ok(v) => v,
                     Err(e) => {
@@ -74,12 +88,11 @@ impl Block {
                     }
                 };
 
-                let nested_block_attrs = Attributes::new(current_time,
-                                                         GROUP_TYPE_SIMPLY,
-                                                         &nested_block_name);
+                let nested_block_attrs =
+                    Attributes::new(current_time, GROUP_TYPE_SIMPLY, &nested_block_id);
                 nested_blocks.push(NestedBlock::new(&nested_block_attrs, &nested_block_data));
 
-                match &*(*nested_block_name) {
+                match &*(*nested_block_id) {
                     "module" => group_type = GROUP_TYPE_MODULE,
                     "form" => group_type = GROUP_TYPE_FORM,
                     _ => continue,
@@ -95,15 +108,15 @@ impl Block {
                 }
             };
 
-            let nested_block_attrs = Attributes::new(current_time, GROUP_TYPE_SIMPLY, &block_name);
+            let nested_block_attrs = Attributes::new(current_time, GROUP_TYPE_SIMPLY, &block_id);
             nested_blocks.push(NestedBlock::new(&nested_block_attrs, &nested_block_data));
         }
 
         let retval = Block {
-            block_type: block_type, // тип блока
-            attrs: Attributes::new(current_time, group_type, &block_name), /* атрибуты блока */
-            source_data: Vec::new(), /* Исходные необработанные данные блока */
-            nested_blocks: nested_blocks, /* подчиненные блоки (если это составной блок) */
+            block_type: RefCell::new(block_type), // тип блока
+            attrs: Attributes::new(current_time, group_type, &block_id), /* атрибуты блока */
+            source_data: RefCell::new(Vec::new()), /* Исходные необработанные данные блока */
+            nested_blocks: RefCell::new(nested_blocks), /* подчиненные блоки (если это составной блок) */
         };
 
         trace!("-Init block from the file.");
@@ -112,22 +125,50 @@ impl Block {
     }
 
     // Возвращает данные блока
-    pub fn get_data(&mut self) -> Vec<NestedBlock> {
-
+    pub fn get_data(&self) -> Vec<NestedBlock> {
         self.decompress_data();
+        if BlockType::Simply.ne(&self.block_type.borrow()) &&
+           BlockType::Multiple.ne(&self.block_type.borrow()) {
+            error!("Trying to getting an untreated data block.");
+            panic!("Trying to getting an untreated data block.")
+        }
+        let mut retval: Vec<NestedBlock> = Vec::new();
 
-        if BlockType::Simply.ne(&self.block_type) && BlockType::Multiple.ne(&self.block_type) {
+        for sb in self.nested_blocks.borrow().iter() {
+            retval.push(NestedBlock::new(&sb.attrs, &sb.data));
+        }
+        return retval;
+    }
+
+    // Устанавливает данные вложенного блока. Если блок простой, то у него есть только один вложенный блок
+    // имя которого соотвествует имени самого блока
+    pub fn set_data(&self, nested_block_name: &String, nested_block_data: &Vec<u8>) {
+
+        if BlockType::Simply.ne(&self.block_type.borrow()) &&
+           BlockType::Multiple.ne(&self.block_type.borrow()) {
             error!("Trying to getting an untreated data block.");
             panic!("Trying to getting an untreated data block.")
         }
 
-        let mut blocks: Vec<NestedBlock> = Vec::new();
+        let mut is_find = false;
 
-        for sb in &self.nested_blocks {
-            blocks.push(NestedBlock::new(&sb.attrs, &sb.data));
+        for sb in self.nested_blocks.borrow_mut().iter_mut() {
+            if sb.attrs.id().eq(&*(*nested_block_name)) {
+                sb.data.clear();
+                sb.data.extend_from_slice(&nested_block_data[..]);
+
+                is_find = true;
+            }
         }
 
-        return blocks;
+        if !is_find {
+            error!("Failed set new data. Block id - '{}' nested block name - '{}'",
+                   &self.id(),
+                   nested_block_name);
+            panic!("Failed set new data. Block id - '{}' nested block name - '{}'",
+                   &self.id(),
+                   nested_block_name);
+        }
     }
 
     // Получить данные блока для конфигурационного файла.
@@ -135,12 +176,12 @@ impl Block {
 
         let mut data: Vec<u8> = Vec::new();
 
-        match self.block_type {
+        match *(self.block_type.borrow()) {
             BlockType::FromCf => {
-                data.extend_from_slice(&self.source_data);
+                data.extend_from_slice(&(self.source_data.borrow()));
             }
             BlockType::Simply => {
-                for sb in &self.nested_blocks {
+                for sb in self.nested_blocks.borrow().iter() {
                     data.extend_from_slice(&sb.data);
                 }
             }
@@ -148,7 +189,7 @@ impl Block {
                 let mut toc = TOC::new();
                 let mut block_data: Vec<u8> = Vec::new();
 
-                for sb in &self.nested_blocks {
+                for sb in self.nested_blocks.borrow().iter() {
                     let sb_attrs_data = sb.attrs.for_cf();
 
                     let mut nested_block_data: Vec<u8> = Vec::new();
@@ -172,7 +213,7 @@ impl Block {
             }
         }
 
-        if !data.is_empty() && BlockType::FromCf.ne(&self.block_type) {
+        if !data.is_empty() && BlockType::FromCf.ne(&self.block_type.borrow()) {
             data = zlib_wrapper::compress(&data);
         }
 
@@ -180,20 +221,20 @@ impl Block {
     }
 
     // Записать данные блока в файлы
-    pub fn write_to_file(&mut self, path_to_dir: &String) {
+    pub fn write_to_file(&self, path_to_dir: &String) {
 
         trace!("Write block to the file.");
 
         let nested_blocks = self.get_data();
 
-        let path_to_block_dir: String = match self.block_type {
+        let path_to_block_dir: String = match *(self.block_type.borrow()) {
             BlockType::FromCf => {
                 error!("Error recording unprocessed block.");
                 panic!("Error recording unprocessed block.");
             }
             BlockType::Simply => path_to_dir.clone(),
             BlockType::Multiple => {
-                let group_dir = Path::new(path_to_dir).join(self.name());
+                let group_dir = Path::new(path_to_dir).join(self.id());
                 let path = file_system::path_to_str(group_dir.as_path());
                 path
             }
@@ -202,9 +243,9 @@ impl Block {
         file_system::create_dir(&path_to_block_dir);
 
         for sb in nested_blocks {
-            let name = sb.attrs.name();
-            trace!("Nested block: {}", name);
-            let file_name = Path::new(&path_to_block_dir).join(name);
+            let id = sb.attrs.id();
+            trace!("Nested block: {}", id);
+            let file_name = Path::new(&path_to_block_dir).join(id);
             let file_name_str = file_system::path_to_str(file_name.as_path());
 
             match file_system::write_file(&*file_name_str, &sb.data) {
@@ -220,27 +261,27 @@ impl Block {
     }
 
     // Получить наименование блока
-    pub fn name<'a>(&'a self) -> &'a String {
-        return self.attrs.name();
+    pub fn id<'a>(&'a self) -> &'a String {
+        return self.attrs.id();
     }
 
     // Распаковывает данные блоков если они были получены из конфигурационного файла и не распакованы ранее.
-    fn decompress_data(&mut self) {
+    fn decompress_data(&self) {
 
-        if BlockType::FromCf.ne(&self.block_type) {
+        if BlockType::FromCf.ne(&self.block_type.borrow()) {
             return;
         }
 
         let mut block_data: Vec<u8> = Vec::new();
-        if !self.source_data.is_empty() {
-            let mut decompress_data = zlib_wrapper::decompress(&self.source_data);
+        if !self.source_data.borrow().is_empty() {
+            let mut decompress_data = zlib_wrapper::decompress(&self.source_data.borrow());
             block_data.append(&mut decompress_data);
         }
 
         match TOC::from_cf(&block_data) {
             None => {
-                self.block_type = BlockType::Simply;
-                self.nested_blocks.push(NestedBlock::new(&self.attrs, &block_data));
+                *self.block_type.borrow_mut() = BlockType::Simply;
+                self.nested_blocks.borrow_mut().push(NestedBlock::new(&self.attrs, &block_data));
             }
             Some(toc) => {
                 if block_data[0..GROUP_BLOKS_FLAG.len()] != GROUP_BLOKS_FLAG {
@@ -248,21 +289,23 @@ impl Block {
                     panic!("Flag of the group block is not found.");
                 }
 
-                self.block_type = BlockType::Multiple;
-                self.nested_blocks.clear();
+                *self.block_type.borrow_mut() = BlockType::Multiple;
+                self.nested_blocks.borrow_mut().clear();
 
                 for address in toc.addresses() {
                     let attr_header = Header::from_cf(&block_data, address.attr_header_pos());
                     let data_header = Header::from_cf(&block_data, address.data_header_pos());
 
-                    let (nested_block_attrs, nested_block_data) = get_attrs_and_data(&block_data,
-                                                                                     &attr_header,
-                                                                                     &data_header);
+                    let (nested_block_attrs, nested_block_data) =
+                        get_attrs_and_data(&block_data, &attr_header, &data_header);
                     self.nested_blocks
+                        .borrow_mut()
                         .push(NestedBlock::new(&nested_block_attrs, &nested_block_data));
                 }
             }
         }
+
+        self.source_data.borrow_mut().clear();
     }
 
     // TODO
@@ -314,7 +357,7 @@ fn get_attrs_and_data(source_data: &Vec<u8>,
     let mut header = data_header.clone();
 
     loop {
-        block_data.extend_from_slice(get_region(source_data, &header));
+        block_data.extend_from_slice(reader::get_region(source_data, &header));
 
         match header.next_header_position() {
             Some(pos) => header = Header::from_cf(source_data, pos),
@@ -337,7 +380,7 @@ fn get_attr(source_data: &Vec<u8>, header: &Header) -> Attributes {
                header.region_position());
     }
 
-    let attrs_data = get_region(source_data, header);
+    let attrs_data = reader::get_region(source_data, header);
 
     return Attributes::from_cf(attrs_data);
 }
@@ -354,7 +397,7 @@ fn test_simple_block_from_cf() {
 
     let attr_header = Header::for_cf(attrs.len());
 
-    let data: Vec<u8> = vec![0xCB, 0x48, 0xCD, 0xC9, 0xC9, 0x07, 0x00]; // hello
+    let data: Vec<u8> = vec![0xCA, 0x48, 0xCD, 0xC9, 0xC9, 0x07]; // hello
     let data_header = Header::for_cf(data.len());
 
     let mut block_data: Vec<u8> = Vec::new();
@@ -367,7 +410,7 @@ fn test_simple_block_from_cf() {
     let header_data_in_block = Header::from_cf(&block_data,
                                                (attr_header.len() + attrs.len()) as i32);
 
-    let mut test = Block::from_cf(&block_data, &header_attr_in_block, &header_data_in_block);
+    let test = Block::from_cf(&block_data, &header_attr_in_block, &header_data_in_block);
 
     let nested_blocks = test.get_data();
     let (new_block_attrs, new_block_data) = test.for_cf();
@@ -428,9 +471,9 @@ fn test_multi_block_from_cf() {
     let header_data_in_multi_block = Header::from_cf(&multi_block,
                                                      (attr_header.len() + attrs.len()) as i32);
 
-    let mut test = Block::from_cf(&multi_block,
-                                  &header_attr_in_multi_block,
-                                  &header_data_in_multi_block);
+    let test = Block::from_cf(&multi_block,
+                              &header_attr_in_multi_block,
+                              &header_data_in_multi_block);
     let nested_blocks = test.get_data();
     let (new_block_attrs, new_block_data) = test.for_cf();
 

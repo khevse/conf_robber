@@ -17,19 +17,19 @@ impl ConnectionSettings {
     pub fn from_map(attributes: &HashMap<String, String>) -> ConnectionSettings {
 
         return ConnectionSettings::new(attributes.get("platform")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("path")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("user_name")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("user_pwd")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("storage_path")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("storage_user_name")
-                                                 .unwrap_or(&String::new()),
+                                           .unwrap_or(&String::new()),
                                        attributes.get("storage_user_pwd")
-                                                 .unwrap_or(&String::new()));
+                                           .unwrap_or(&String::new()));
 
     }
 

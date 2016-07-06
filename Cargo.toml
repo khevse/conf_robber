@@ -6,5 +6,5 @@ authors = ["Jack <khevse@gmail.com>"]
 [dependencies]
 log = "0.3"
 logger = { path = "./libs/logger" }
-conf_v8 = { path = "./libs/conv" }
+conf_v8 = { path = "./libs/conf_v8" }
 file_system = { path = "./libs/file_system" }

@@ -1,26 +1,10 @@
-#include "zlibwrapper.hpp"
+#include "zlibwrapper.h"
 #include "zlib.h"
 
 #include <stdlib.h>
-#include <fstream>
+#include <exception>
 
-/* СЛУЖЕБНЫЕ ФУНКЦИИ ДЛЯ ОТЛАДКИ */
-
-void log(const char *buffer) {
-
-	std::ofstream outfile;
-	outfile.exceptions( std::fstream::failbit );
-	outfile.open("zlib_wrapper_log.txt", std::ofstream::binary | std::ofstream::app);
-	outfile << "\n" << buffer;
-    outfile.flush();
-	outfile.close();
-}
-
-void log(const BYTE *buffer) {
-	log((char*)buffer);
-}
-
-/* ОСНОВНЫЕ ФУНКЦИИ */
+#define BUFFER_SIZE 16384
 
 /**
  * Сжатие данных
@@ -34,64 +18,80 @@ void log(const BYTE *buffer) {
  */
 bool compress_data(const BYTE *sourceData, usize sourceDataSize, BYTE **compressData, usize *compressDataSize)
 {
-	*compressData = nullptr;
-	*compressDataSize = 0;
+    *compressData = nullptr;
+    *compressDataSize = 0;
 
-	z_stream strm;
-	strm.zalloc = Z_NULL;
-	strm.zfree  = Z_NULL;
-	strm.opaque = Z_NULL;
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree  = Z_NULL;
+    strm.opaque = Z_NULL;
 
-	int ret = deflateInit2(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
+    int ret = deflateInit2(&strm, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
 
-	if (ret != Z_OK) {
-		return false;
-	}
+    if (ret != Z_OK) {
+        return false;
+    }
 
-	const int bufferLen    = sourceDataSize;
-	BYTE buffer[bufferLen] = {0};
-	usize readDataSize     = 0;
-	usize balanceDataSize  = sourceDataSize;
+    BYTE buffer[BUFFER_SIZE] = {0};
+    usize readDataSize     = 0;
+    usize balanceDataSize  = sourceDataSize;
 
-	BYTE *pDataNotConst = const_cast<BYTE*>(sourceData);
+    BYTE *pDataNotConst = const_cast<BYTE*>(sourceData);
 
-	while ( balanceDataSize > 0 ) {
-		const usize currentDataSize = (balanceDataSize > bufferLen) ? bufferLen : balanceDataSize;
+    BYTE *compressDataTemp = nullptr;
+    usize compressDataTempSize = 0;
 
-		strm.avail_in = currentDataSize;
-		strm.next_in  = pDataNotConst + readDataSize;
+    int flush = 0;
 
-		readDataSize += currentDataSize;
-		balanceDataSize -= currentDataSize;
+    while ( balanceDataSize > 0 ) {
+        const usize currentDataSize = (balanceDataSize > BUFFER_SIZE) ? BUFFER_SIZE : balanceDataSize;
 
-		do {
-			strm.avail_out = bufferLen;
-			strm.next_out  = buffer;
+        strm.avail_in = currentDataSize;
+        strm.next_in  = pDataNotConst + readDataSize;
 
-			ret = deflate(&strm, balanceDataSize == 0 ? Z_FINISH : Z_NO_FLUSH);
+        readDataSize += currentDataSize;
+        balanceDataSize -= currentDataSize;
 
-			const usize deflateLen   = bufferLen - strm.avail_out;
-			const usize current_size = *compressDataSize;
+        do {
+            strm.avail_out = BUFFER_SIZE;
+            strm.next_out  = buffer;
 
-			BYTE *compressDataTemp = (BYTE*) realloc (*compressData, current_size + deflateLen);
+            ret = deflate(&strm, Z_BLOCK);
+            if (ret == Z_STREAM_ERROR) {
+                if (compressData) {
+                    free (compressData);
+                }
 
-			if ( compressDataTemp != nullptr ) {
-				*compressData = compressDataTemp;
-				*compressDataSize += deflateLen;
-				memcpy(*compressData+current_size, buffer, deflateLen);
-			} else {
-				*compressDataSize = 0;
-				free (compressData);
-				(void)deflateEnd(&strm);
-		        return false;
-			}
+                *compressDataSize = 0;
+                break;
+            }
 
-		} while (strm.avail_out == 0 && ret != Z_STREAM_END);
-	}
+            const usize deflateLen   = BUFFER_SIZE - strm.avail_out;
+            const usize current_size = *compressDataSize;
 
-	(void)deflateEnd(&strm);
+            if ( current_size + deflateLen > compressDataTempSize ) {
+                compressDataTempSize = (compressDataTempSize == 0 ? sourceDataSize : compressDataTempSize) * 2;
+                compressDataTemp = (BYTE*) realloc (*compressData, compressDataTempSize);
+            }
 
-	return (sourceDataSize > 0) && (*compressDataSize == 0) ? false : true;
+            if ( compressDataTemp != nullptr ) {
+                *compressData = compressDataTemp;
+                *compressDataSize += deflateLen;
+                memcpy(*compressData+current_size, buffer, deflateLen);
+            } else {
+                if (compressData) {
+                    free (compressData);
+                }
+                *compressDataSize = 0;
+                break;
+            }
+
+        } while (strm.avail_out == 0 && ret != Z_STREAM_END);
+    }
+
+    (void)deflateEnd(&strm);
+
+    return (sourceDataSize > 0) && (*compressDataSize == 0) ? false : true;
 }
 
 /**
@@ -106,59 +106,75 @@ bool compress_data(const BYTE *sourceData, usize sourceDataSize, BYTE **compress
  */
 bool decompress_data(const BYTE *sourceData, usize sourceDataSize, BYTE **decompressData, usize *decompressDataSize)
 {
-	*decompressData = nullptr;
-	*decompressDataSize = 0;
+    *decompressData = nullptr;
+    *decompressDataSize = 0;
 
-	z_stream strm;
-	strm.zalloc = Z_NULL;
-	strm.zfree = Z_NULL;
-	strm.opaque = Z_NULL;
-	strm.avail_in = 0;
-	strm.next_in = Z_NULL;
-	int ret = inflateInit2(&strm, -MAX_WBITS);
-	if ( ret != Z_OK ) {
-		return false;
-	}
+    usize resultBufferSize(BUFFER_SIZE), resultSize(0);
+    BYTE *resultBuffer, *resultBufferOld;
 
-	BYTE *pDataNotConst = const_cast<BYTE*>(sourceData);
-	strm.avail_in = sourceDataSize;
-	strm.next_in  = pDataNotConst;
+    if( (resultBuffer = (BYTE *) malloc(resultBufferSize)) == NULL ) {
+        return false;
+    }
 
-	const int bufferLen = sourceDataSize + 1024;
-	BYTE buffer[bufferLen] = {0};
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = 0;
 
-	do {
-		strm.avail_out = bufferLen;
-		strm.next_out  = buffer;
-		ret = inflate(&strm, Z_NO_FLUSH);
-		if ( ret == Z_STREAM_ERROR) {
-			*decompressDataSize = 0;
-			free (decompressData);
-			(void) inflateEnd(&strm);
-			return false;
-		}
+    BYTE *pDataNotConst = const_cast<BYTE*>(sourceData);
+    strm.avail_in = sourceDataSize;
+    strm.next_in  = pDataNotConst;
 
-		const usize inflateLen = bufferLen - strm.avail_out;
-		const usize current_size = *decompressDataSize;
+    int ret = inflateInit2(&strm, -MAX_WBITS);
+    if ( ret != Z_OK ) {
+        free( resultBuffer );
+        return false;
+    }
 
-		BYTE *decompressDataTemp = (BYTE*) realloc (*decompressData, current_size + inflateLen);
+    BYTE buffer[BUFFER_SIZE] = {0};
 
-		if ( decompressDataTemp != nullptr ) {
-			*decompressData = decompressDataTemp;
-			*decompressDataSize += inflateLen;
-			memcpy(*decompressData+current_size, buffer, inflateLen);
-		} else {
-			*decompressDataSize = 0;
-			free (decompressData);
-			(void) inflateEnd(&strm);
-	        return false;
-		}
+    do {
+        strm.avail_out = BUFFER_SIZE;
+        strm.next_out  = buffer;
+        ret = inflate(&strm, Z_BLOCK);
 
-	} while ( strm.avail_out == 0 );
+        if ( ret == Z_STREAM_ERROR) {
+            free( resultBuffer );
+            resultSize = 0;
+            break;
+        }
 
-	(void) inflateEnd(&strm);
+        const usize inflateLen = BUFFER_SIZE - strm.avail_out;
+        const usize current_size = resultSize;
 
-	return (sourceDataSize > 0) && (*decompressDataSize == 0) ? false : true;
+        if ( (current_size + inflateLen) > resultBufferSize ) {
+            resultBufferSize = resultBufferSize * 2;
+            resultBufferOld  = resultBuffer;
+            if( (resultBuffer = (BYTE*) realloc(resultBuffer, resultBufferSize)) ==  NULL ) {
+                free( resultBufferOld );
+                resultSize = 0;
+                break;
+            }
+        }
+
+        resultSize += inflateLen;
+        memcpy(resultBuffer+current_size, buffer, inflateLen);
+
+    } while ( strm.total_in < sourceDataSize );
+
+    if ( resultSize > 0 ) {
+        resultBufferOld = resultBuffer;
+        if( (resultBuffer = (BYTE*) realloc(resultBuffer, resultSize)) ==  NULL ) {
+            free( resultBufferOld );
+        } else {
+            *decompressData = resultBuffer;
+            *decompressDataSize = resultSize;
+        }
+    }
+
+    (void) inflateEnd(&strm);
+
+    return (sourceDataSize > 0) && (*decompressDataSize > 0);
 }
 
 /**
@@ -167,5 +183,5 @@ bool decompress_data(const BYTE *sourceData, usize sourceDataSize, BYTE **decomp
  */
 void free_data(BYTE **data)
 {
-	free (*data);
+    free (*data);
 }

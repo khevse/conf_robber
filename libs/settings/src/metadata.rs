@@ -8,12 +8,16 @@ pub struct Metadata {
     type_name: String, /* Наименование типа которому принадлежит объект */
     name: String, // Наименование
     main: bool, /* Является основным объектом сборки (не будут удаляться команды, шаблоны, формы) */
+    except_forms: Vec<String>, /* Удалить формы из основного объекта сборки */
+    except_templates: Vec<String>, /* Удалить шаблоны из основного объекта сборки */
 }
 
 impl Metadata {
     pub fn new(type_name: &String,
                name: &String,
-               attributes: &HashMap<String, String>)
+               attributes: &HashMap<String, String>,
+               except_forms: Vec<String>,
+               except_templates: Vec<String>)
                -> Result<Metadata, String> {
 
         let re = match regex::Regex::new(r"(?P<bad_symbol>[^a-zA-Zа-яА-Я0-9_*])") {
@@ -31,23 +35,33 @@ impl Metadata {
             return Err(format!("Empty name of metadata object: {:?}", type_name));
         }
 
-        return Ok(Metadata {
+        Ok(Metadata {
             type_name: type_name.clone(),
             name: name_temp,
             main: attributes.get("main").unwrap_or(&String::from("false")).eq("true"),
-        });
+            except_forms: except_forms,
+            except_templates: except_templates,
+        })
     }
 
     pub fn type_name<'a>(&'a self) -> &'a String {
-        return &self.type_name;
+        &self.type_name
     }
 
     pub fn name<'a>(&'a self) -> &'a String {
-        return &self.name;
+        &self.name
     }
 
     pub fn main(&self) -> bool {
-        return self.main;
+        self.main
+    }
+
+    pub fn except_forms(&self) -> Vec<String> {
+        self.except_forms.clone()
+    }
+
+    pub fn except_templates(&self) -> Vec<String> {
+        self.except_templates.clone()
     }
 }
 
@@ -93,6 +107,10 @@ mod tests {
         let mut attributes: HashMap<String, String> = HashMap::new();
         attributes.insert(String::from("main"), String::from(main));
 
-        return Metadata::new(&String::from("type"), &String::from(name), &attributes);
+        return Metadata::new(&String::from("type"),
+                             &String::from(name),
+                             &attributes,
+                             <Vec<String>>::new(),
+                             <Vec<String>>::new());
     }
 }

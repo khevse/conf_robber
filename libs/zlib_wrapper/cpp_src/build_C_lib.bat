@@ -27,10 +27,10 @@ SET "BUILD_DIR_NAME=build"
 SET "BUILD_DIR=%CPP_DIR%\build"
 
 rem 32 or 64
-SET "SYS_TYPE=64"
+SET "SYS_TYPE=32"
 
 if "%MINGW_DIR%" == "" (
-    SET "MINGW_DIR=C:/C++/mingw-w64-5-2-0/mingw64"
+    SET "MINGW_DIR=C:\c++\mingw-w64\i686-5.3.0-win32-dwarf-rt_v4-rev0\mingw32"
     SET "PATH=%PATH%;%MINGW_DIR%\bin"
 )
 
@@ -59,6 +59,16 @@ if "%ERRORLEVEL%" == "0" (
 ) Else (
     cd ..
     exit 1
+)
+
+rem tests
+if exist test_zlibwrapper.exe (
+    if exist zlib_wrapper_log.txt (
+        DEL zlib_wrapper_log.txt
+        DEL zlib_wrapper_log_t.txt
+    )
+
+    test_zlibwrapper.exe
 )
 
 if not "%BUILD_TYPE%" == "release" (

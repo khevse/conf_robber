@@ -3,10 +3,12 @@ use std::collections::HashMap;
 
 const PACK: &'static str = "-P"; // Разобрать конфигурационный файл на блоки и записать их в файлы
 const BUILD: &'static str = "-B"; // Создать файл конфигурации на основании раннее распакованной в файлы конфигурации
+const FORMAT: &'static str = "-F"; // Выполнить форматирование текста в файлах блоков
 const CF: &'static str = "--cf"; // Путь к конфигурационному файлу
 const DIR: &'static str = "--dir"; // Каталог
 const TARGET: &'static str = "--target"; // Путь к каталогу в который будет помещен результат
 const LOG_LEVEL: &'static str = "--log-level"; // Уровень логирования при выполнении операции
+const SETTINGS: &'static str = "--settings"; // Настройки сборки
 
 // Аргументы переданные в программу
 pub struct Args {
@@ -28,7 +30,7 @@ impl Args {
                 1 => {
                     let key = String::from(*values.get(0).unwrap());
 
-                    operation = match key.eq(PACK) || key.eq(BUILD) {
+                    operation = match key.eq(PACK) || key.eq(BUILD) || key.eq(FORMAT) {
                         true => key,
                         _ => String::new(),
                     };
@@ -38,7 +40,8 @@ impl Args {
                     let val = String::from(*values.get(1).unwrap());
 
                     if val.len() > 0 &&
-                       (key.eq(CF) || key.eq(DIR) || key.eq(TARGET) || key.eq(LOG_LEVEL)) {
+                       (key.eq(CF) || key.eq(DIR) || key.eq(TARGET) || key.eq(LOG_LEVEL)) ||
+                       key.eq(SETTINGS) {
                         params.insert(key, val);
                     }
                 }
@@ -64,11 +67,18 @@ impl Args {
                 panic!("{}", Args::desc_build_params());
             }
 
+        } else if retval.operation().eq(FORMAT) {
+            if retval.dir() == None || retval.target() == None {
+                panic!("{}", Args::desc_format_params());
+            }
+
         } else {
             let mut desc = String::new();
             desc.push_str(&*Args::desc_unpuck_params());
             desc.push_str("\n\n");
             desc.push_str(&*Args::desc_build_params());
+            desc.push_str("\n\n");
+            desc.push_str(&*Args::desc_format_params());
 
             panic!("{}", desc);
         }
@@ -101,6 +111,11 @@ impl Args {
         return self.params.get(LOG_LEVEL);
     }
 
+    // Возвращает настройки
+    pub fn settings(&self) -> Option<&String> {
+        return self.params.get(SETTINGS);
+    }
+
     // Возвращает справку для выполнения операции по распаковке конфигурационного файла
     fn desc_unpuck_params() -> String {
 
@@ -116,6 +131,8 @@ impl Args {
         desc.push_str("=Path to the target directory\n");
         desc.push_str(LOG_LEVEL);
         desc.push_str("=Log level (optional)\n");
+        desc.push_str(SETTINGS);
+        desc.push_str("=path to the settings file *.xml (optional)\n");
 
         return desc;
     }
@@ -128,6 +145,24 @@ impl Args {
         desc.push_str("Operation type: build the configuration file (*.cf)\n");
         desc.push_str("Options:\n");
         desc.push_str(BUILD);
+        desc.push_str(" - operation type\n");
+        desc.push_str(DIR);
+        desc.push_str("=Path to the directory with the source files\n");
+        desc.push_str(TARGET);
+        desc.push_str("=Path to the configuration file (*.cf)\n");
+        desc.push_str(LOG_LEVEL);
+        desc.push_str("=Log level (optional)\n");
+
+        return desc;
+    }
+
+    fn desc_format_params() -> String {
+
+        let mut desc = String::new();
+
+        desc.push_str("Operation type: format a text in the files with data of unpacked blocks\n");
+        desc.push_str("Options:\n");
+        desc.push_str(FORMAT);
         desc.push_str(" - operation type\n");
         desc.push_str(DIR);
         desc.push_str("=Path to the directory with the source files\n");
