@@ -25,7 +25,7 @@ pub fn filter(blocks: &mut Vec<Block>, settings: &settings::Settings) {
             .map(|x| String::from(*x))
             .collect::<Vec<String>>();
 
-    const internal_types_ids: [&'static str; 5] = [meta_data::types::FORMS_ID_DOC,
+    const INTERNAL_TYPES_IDS: [&'static str; 5] = [meta_data::types::FORMS_ID_DOC,
                                                    meta_data::types::FORMS_ID_CATALOG,
                                                    meta_data::types::PROPS_ID,
                                                    meta_data::types::COMMANDS_ID,
@@ -33,8 +33,8 @@ pub fn filter(blocks: &mut Vec<Block>, settings: &settings::Settings) {
 
     let mut deleted_ref_ids = <Vec<String>>::new();
 
-    let CATALOG_ID: String = String::from(meta_data::types::CATALOG);
-    let DOCUMENT_ID: String = String::from(meta_data::types::DOCUMENT.to_string());
+    let catalog_id: String = String::from(meta_data::types::CATALOG);
+    let document_id: String = String::from(meta_data::types::DOCUMENT.to_string());
 
     for (type_id, type_name) in meta_data::types::get_types() {
         let coordinates = find_type_coordinates(type_id, type_name, &conf_data);
@@ -64,17 +64,17 @@ pub fn filter(blocks: &mut Vec<Block>, settings: &settings::Settings) {
 
             // Если объект не основной, то удаляем модули объекта и менеджера
             if !filtr.main() {
-                if CATALOG_ID.eq(type_id) {
+                if catalog_id.eq(type_id) {
                     except_blocks_ids.push(format!("{}.0", item.id())); // модуль объекта
                     except_blocks_ids.push(format!("{}.3", item.id())); // модуль менеджера справочника
-                } else if DOCUMENT_ID.eq(type_id) {
+                } else if document_id.eq(type_id) {
                     except_blocks_ids.push(format!("{}.0", item.id())); // модуль объекта
                     except_blocks_ids.push(format!("{}.2", item.id())); // модуль менеджера документа
                 }
             }
 
             // Отбираем блоки внутренних типов
-            for internal_type_id in internal_types_ids.iter() {
+            for internal_type_id in INTERNAL_TYPES_IDS.iter() {
                 let internal_ids = internal_objects_ids(internal_type_id, &desc);
 
                 let (force_internal_ids, except_internal_ids) =

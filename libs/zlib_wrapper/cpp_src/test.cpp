@@ -75,7 +75,7 @@ int main()
 {
     log("Test");
 
-    BinaryData sourceData = readFile("E:\\MyWork\\rust\\conf_robber\\test_data\\original.cf");
+    BinaryData sourceData = readFile("../../../test_data/original.cf");
 
     char buf[1024] = {0};
 

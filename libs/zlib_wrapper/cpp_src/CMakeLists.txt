@@ -18,14 +18,14 @@ set(SYSTEM WIN$ENV{SYS_TYPE})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -std=c++11 -Wall -Wextra -D${SYSTEM} -pthread -static -static-libgcc -static-libstdc++")
 
- if(MINGW)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
-    set(MINGW_DIR "$ENV{MINGW_DIR}")
-    set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${MINGW_DIR}/x86_64-w64-mingw32/lib;${CMAKE_LIBRARY_PATH};${LIBRARY_OUTPUT_PATH}")
-    set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${CMAKE_INCLUDE_PATH};${MINGW_DIR}/x86_64-w64-mingw32/include")
+if(MINGW)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
+   set(MINGW_DIR "$ENV{MINGW_DIR}")
+   set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${MINGW_DIR}/x86_64-w64-mingw32/lib;${CMAKE_LIBRARY_PATH};${LIBRARY_OUTPUT_PATH}")
+   set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${CMAKE_INCLUDE_PATH};${MINGW_DIR}/x86_64-w64-mingw32/include")
 
-    include(Platform/Windows-GNU-CXX)
- endif(MINGW)
+   include(Platform/Windows-GNU-CXX)
+endif(MINGW)
 
 # Расположение заголовочных файлов
 INCLUDE_DIRECTORIES(
@@ -39,7 +39,7 @@ add_subdirectory(zlib)
 # Создание основной библиотеки
 add_library(${PROJECT} STATIC zlibwrapper.cpp zlibwrapper.h)
 
-
+# Тестирование
 if ("$ENV{BUILD_TYPE}" MATCHES "debug")
     set (TESTS_SOURCES test.cpp)
     set (TEST test_${PROJECT})
