@@ -1,35 +1,76 @@
 # conf_robber
-# RU: Изменение файла конфигурации 1С.
 
-Перед началом сборки необходимо:
+Данный проект предназначен для получения нужных объектов метаданных конфигурационного файла 1С и может быть полезен тем,
+кто разрабатывает обработки, которые должны работать в различных конфигурациях 1С.
+С помощью данного проекта можно значительно сократить время на сравнение и объединение конфигураций 1С, а также выполнять
+какие-то особые действия с кодом и объектами.
 
-Скачать исходные файлы библиотек:    
-- zlib: http://www.zlib.net/ - поместить в каталог libs/zlib_wrapper/cpp_src/zlib/
+## Сборка проекта для Windows
+- [скачать исходные файлы библиотеки zlib](http://www.zlib.net/) и поместить в каталог _**libs/zlib_wrapper/cpp_src/zlib/**_
+- [установить mingw64](http://sourceforge.net/projects/mingw-w64/) (architecture: x86_64, threads: win32, exception: seh)
+- [установить cmake](http://www.cmake.org/download/)
+- [установить rustup](https://www.rustup.rs) (я использую только стабильную сборку, поэтому установку rust выполняю следующими командами: _**rustup install stable-x86_64-pc-windows-gnu && rustup default stable-x86_64-pc-windows-gnu**_)
 
-Установить:
-- rustup default stable-x86_64-pc-windows-gnu (https://www.rustup.rs)
-- mingw64: http://sourceforge.net/projects/mingw-w64/
-- cmake:   http://www.cmake.org/download/
+Далее для сборки необходимо запустить скрипт **build.bat**, который находится в корневом каталоге проекта.
 
-После установки необходимо изменить значения переменных в libs/zlib_wrapper/cpp_src/build_C_lib.bat.
+## Параметры запуска:
+_**ВНИМАНИЕ**_: все пути к файлам и каталогам должны указываться полностью. Т.е. **_'C:/Temp/conf.cf'_ - правильно, _'Temp/conf.cf'_ - неправильно**
 
-Планируется:
- - модуль должен уметь изменять структуру конфигурационного файла
- - выполнять локализацию
+_**Разборка конфигурационного файла в каталог**_:
+```batch
+conf_robber -P "--cf=<путь к файлу *.cf>" "--target=<путь к каталогу, в который распаковываем>" --log-level=info
+```
+_**Разборка конфигурационного файла в каталог, на основании настроек**_:
+```batch
+conf_robber -P "--cf=<путь к файлу *.cf>" "--target=<путь к каталогу, в который распаковываем>" --log-level=info "--settings=<путь к файлу settings.xml>"
+```
+[Пример файла настроек **settings.xml**](https://github.com/khevse/conf_robber/blob/master/test_data/settings.xml)
 
-# EN: Changing the configuration file of 1C
+_**Сборка конфигурационного файла из ранее разобранного**_:
+```batch
+conf_robber -B "--dir=<путь к каталогу, в который была распакована конфигурация>" "--target=<путь к каталогу, в котором будет создан файл с собранной конфигурацией>" --log-level=info
+```
 
-Before building needed:
+## Один из способов использования проекта
 
-Download the source files of libraries:
-- zlib: http://www.zlib.net/ - unzip in the directory libs/zlib_wrapper/cpp_src/zlib/
+_**Исходные данные**_:
+Основная разработка ведется в одной из стандартных конфигураций 1С, куда добавляются новые объекты метаданных.
 
-To install:
-- mingw64: http://sourceforge.net/projects/mingw-w64/
-- cmake:   http://www.cmake.org/download/
+_**Задача**_:
+В другой конфигурации нужно проверить только измененные объекты метаданных
 
-After installation need change variables in the libs/zlib_wrapper/cpp_src/build_C_lib.bat.
+_**Выполняемые действия**_:
+ 1. Выгрузить конфигурационный файл 1С
+ 2. С помощью данного проекта оставить в конфигурационном файле только нужные объекты метаданных
+ 3. Сравнить и объединить конфигурации
 
-It is planned:
-  - The module must be able to change the structure of the configuration file
-  - To carry out the localization
+_**Пример**_:
+```batch
+@echo off
+rem -*- coding:OEM -*- 
+
+rem Внимание: т.к. в 1С принято имена пользователей вводить кириллицей,  
+rem то batch файл обязательно должен быть создан в кодировке OEM.
+rem Иначе команда запуска 1С в пакетном режиме будет выдавать ошибку.
+
+"C:\Program Files (x86)\1cv8\<Версия>\bin\1cv8.exe" DESIGNER /F "<Путь к базе>" /N "<Имя пользователя>" /DumpCfg "C:/Temp/temp.cf" /Out "C:/Temp/DumpCfg.log"
+if not %errorlevel% == 0 (
+ exit 1
+)
+conf_robber -P "--cf=<путь к файлу *.cf>" "--target=<путь к каталогу, в который распаковываем>" --log-level=info "--settings=<путь к файлу settings.xml>"
+if not %errorlevel% == 0 (
+ exit 2
+)
+
+rem <Нужные действия>
+```
+
+За счет быстрого разбора конфигурационного файла с помощью данного проекта, объединение конфигураций выполняется очень быстро.
+Например в конфигурацию «1С:Бухгалтерия предприятия, редакции 3.0», было добавлено 80 или больше общих моделей и одна обработка. Разбор конфигурационного файла (400 МБ)
+на машине с процессором Intel® Core™ i3 и 8 ГБ ОЗУ составляет шесть секунд.
+
+License
+
+This project and libraries in the directory '**libs**' is licensed under MIT license.
+
+Copyright (C) Evgeny Khramtsov, 2016
