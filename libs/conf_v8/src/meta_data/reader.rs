@@ -63,7 +63,7 @@ pub fn main_conf_block_id(blocks: &Vec<Block>) -> String {
     panic!("Failed finding id of configuration.");
 }
 
-/// Возвращает текст основго блока
+/// Возвращает текст основного блока
 pub fn main_block_data(id: &String, blocks: &Vec<Block>) -> Vec<u8> {
 
     let block = block_by_name(blocks, id);
